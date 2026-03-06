@@ -1,4 +1,44 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type DropletStatus = {
+  id: number;
+  name: string;
+  status: string;
+  uptime: string;
+  region: string;
+  ip: string;
+  memoryMb: number | null;
+  vcpus: number | null;
+  diskGb: number | null;
+  checkedAt: string;
+};
+
 export default function Home() {
+  const [droplet, setDroplet] = useState<DropletStatus | null>(null);
+  const [dropletError, setDropletError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadDroplet = async () => {
+      try {
+        const res = await fetch("/api/droplet-status", { cache: "no-store" });
+        const data = (await res.json()) as DropletStatus & { error?: string };
+
+        if (!res.ok) {
+          setDropletError(data.error ?? "Could not load DigitalOcean status");
+          return;
+        }
+
+        setDroplet(data);
+      } catch {
+        setDropletError("Could not load DigitalOcean status");
+      }
+    };
+
+    loadDroplet();
+  }, []);
+
   return (
     <main className="min-h-screen bg-zinc-950 text-white px-6 py-8 md:px-12">
       <div className="max-w-5xl mx-auto">
@@ -45,10 +85,24 @@ export default function Home() {
           </div>
 
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
-            <h2 className="text-lg font-semibold mb-3">📦 Other VMs</h2>
-            <p className="text-zinc-300">Debian Server: 🟢 Running</p>
-            <p className="text-zinc-300">Test VM: 🔴 Stopped</p>
-            <p className="text-zinc-400 text-sm mt-2">Last backup: Today 10:20 AM</p>
+            <h2 className="text-lg font-semibold mb-3">☁️ DigitalOcean VM</h2>
+            {droplet ? (
+              <>
+                <p className="text-zinc-300">Name: {droplet.name}</p>
+                <p className="text-zinc-300">
+                  Status: {droplet.status === "active" ? "🟢 Active" : `🟡 ${droplet.status}`}
+                </p>
+                <p className="text-zinc-300">Uptime: {droplet.uptime}</p>
+                <p className="text-zinc-400 text-sm mt-2">
+                  {droplet.ip} • {droplet.region}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-zinc-300">Status: Loading...</p>
+                {dropletError ? <p className="text-red-300 text-sm mt-2">{dropletError}</p> : null}
+              </>
+            )}
           </div>
 
           <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-2xl">
@@ -59,9 +113,7 @@ export default function Home() {
           </div>
         </section>
 
-        <footer className="mt-8 text-xs text-zinc-500">
-          Last updated manually • v0.1
-        </footer>
+        <footer className="mt-8 text-xs text-zinc-500">Last updated manually • v0.2</footer>
       </div>
     </main>
   );
